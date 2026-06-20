@@ -1,36 +1,59 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# TCF Compréhension Orale — Practice App
 
-## Getting Started
+Web app to create and take TCF listening tests from YouTube videos.
 
-First, run the development server:
+## Features
+
+- **Home page**: list of created tests
+- **Create test**: paste a YouTube URL → fetch French subtitles → GPT-4o-mini extracts questions with timestamps
+- **Question UI**: TCF-style layout with headphones visualizer and YouTube audio playback at each question's timestamp
+- **MySQL storage**: exams, questions, and options (no user auth)
+
+## Setup
+
+### 1. Database
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+mysql -u root -p < database/schema.sql
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Environment
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Copy `.env.example` to `.env.local` and fill in your values:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+cp .env.example .env.local
+```
 
-## Learn More
+```env
+MYSQL_HOST=localhost
+MYSQL_USER=root
+MYSQL_PASSWORD=your_password
+MYSQL_DATABASE=tcf_practice_db
+OPENAI_API_KEY=sk-...
+OPENAI_MODEL=gpt-4o-mini
+```
 
-To learn more about Next.js, take a look at the following resources:
+### 3. Run
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm install
+npm run dev
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Open [http://localhost:3000](http://localhost:3000).
 
-## Deploy on Vercel
+## Usage
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. Click **+ Nouveau test** on the home page
+2. Paste a TCF Compréhension Orale YouTube link (French subtitles required)
+3. Wait while subtitles are fetched and processed by the LLM (1–3 minutes)
+4. Take the test — click **Écouter** on each question to play audio from the correct timestamp
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Tech stack
+
+- Next.js 16 (App Router)
+- MySQL 8
+- OpenAI API (gpt-4o-mini)
+- youtube-transcript-plus (subtitle extraction)
+- YouTube IFrame API (timestamp audio playback)
