@@ -5,6 +5,11 @@ import { useRouter } from "next/navigation";
 import type { Question } from "@/lib/types";
 import HeadphonesVisualizer from "./HeadphonesVisualizer";
 import YouTubeAudioPlayer from "./YouTubeAudioPlayer";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { supabase } from "@/lib/supabaseClient";
+
+
 
 interface QuestionViewProps {
   question: Question;
@@ -93,6 +98,99 @@ export default function QuestionView({
     }
   };
 
+  const handleSaveImmediate = async (formData: typeof editForm) => {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/questions/${question.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+      if (res.ok) {
+        router.refresh();
+      } else {
+        console.error("Save immediate failed");
+      }
+    } catch (e) {
+      console.error("Network error on save immediate", e);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+
+  const handlePaste = async (e: React.ClipboardEvent) => {
+    const items = e.clipboardData.items;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf("image") !== -1) {
+        const file = items[i].getAsFile();
+        if (!file) continue;
+
+        setSaving(true);
+        try {
+          const formData = new FormData();
+          formData.append("file", file);
+          formData.append("bucket", "orale");
+
+          const res = await fetch("/api/upload", {
+            method: "POST",
+            body: formData,
+          });
+
+          if (!res.ok) {
+            const errorData = await res.json();
+            throw new Error(errorData.error || "Upload failed");
+          }
+
+          const { url } = await res.json();
+
+          const updatedForm = { ...editForm, image_url: url };
+          setEditForm(updatedForm);
+          
+          // Sau khi lấy được link, tự động save vào database luôn như yêu cầu
+          await handleSaveImmediate(updatedForm);
+
+          
+        } catch (err) {
+
+          console.error("Paste error:", err);
+          alert("Une erreur est survenue lors du traitement de l'image.");
+        } finally {
+          setSaving(false);
+        }
+      }
+    }
+  };
+
+  const handleDeleteImage = async () => {
+    if (!editForm.image_url) return;
+    
+    if (!confirm("Voulez-vous vraiment supprimer cette image ?")) return;
+
+    setSaving(true);
+    try {
+      // 1. Xóa file khỏi storage (qua API)
+      await fetch("/api/upload", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: editForm.image_url, bucket: "orale" }),
+      });
+
+      // 2. Cập nhật state
+      const updatedForm = { ...editForm, image_url: "" };
+      setEditForm(updatedForm);
+
+      // 3. Cập nhật database luôn (để đồng bộ với upload)
+      await handleSaveImmediate(updatedForm);
+    } catch (err) {
+      console.error("Delete image error:", err);
+      alert("Erreur lors de la suppression de l'image.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+
   return (
     <div className="grid min-h-[520px] grid-cols-1 gap-0 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-lg lg:grid-cols-2">
       <div className="flex flex-col items-center justify-center border-b border-gray-100 bg-gradient-to-b from-gray-50 to-white lg:border-b-0 lg:border-r">
@@ -123,31 +221,50 @@ export default function QuestionView({
         <div className="mb-4">
           {isEditing ? (
             <div className="flex flex-col gap-2 rounded bg-gray-50 p-3 text-sm">
-              <input
-                type="text"
-                placeholder="URL de l'image (optionnel)"
-                value={editForm.image_url}
-                onChange={(e) => setEditForm(prev => ({ ...prev, image_url: e.target.value }))}
-                className="rounded border border-gray-300 px-3 py-1.5 focus:border-[#6b2d82] focus:outline-none"
-              />
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="URL de l'image (optionnel)"
+                  value={editForm.image_url}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, image_url: e.target.value }))}
+                  onPaste={handlePaste}
+                  className="flex-1 rounded border border-gray-300 px-3 py-1.5 focus:border-[#6b2d82] focus:outline-none"
+                />
+                {editForm.image_url && (
+                  <button
+                    type="button"
+                    onClick={handleDeleteImage}
+                    title="Supprimer l'image"
+                    className="flex items-center justify-center rounded border border-red-200 bg-red-50 px-3 text-red-600 hover:bg-red-100"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                  </button>
+                )}
+              </div>
+
               <textarea
                 placeholder="Texte de la question"
                 value={editForm.question_text}
                 onChange={(e) => setEditForm(prev => ({ ...prev, question_text: e.target.value }))}
+                onPaste={handlePaste}
                 className="rounded border border-gray-300 px-3 py-1.5 focus:border-[#6b2d82] focus:outline-none min-h-[60px]"
               />
+
               <textarea
                 placeholder="Transcript Audio (Hint)"
                 value={editForm.transcript}
                 onChange={(e) => setEditForm(prev => ({ ...prev, transcript: e.target.value }))}
+                onPaste={handlePaste}
                 className="rounded border border-gray-300 px-3 py-1.5 focus:border-[#6b2d82] focus:outline-none min-h-[60px]"
               />
               <textarea
-                placeholder="Note (optionnel)"
+                placeholder="Note (optionnel - Markdown supporté)"
                 value={editForm.note}
                 onChange={(e) => setEditForm(prev => ({ ...prev, note: e.target.value }))}
+                onPaste={handlePaste}
                 className="rounded border border-gray-300 px-3 py-1.5 focus:border-[#6b2d82] focus:outline-none min-h-[60px]"
               />
+
               <div className="mt-2 flex flex-col gap-2">
                 <span className="font-semibold text-gray-700">Options :</span>
                 {editForm.options.map((opt, i) => (
@@ -208,9 +325,26 @@ export default function QuestionView({
               )}
               {question.note && (
                 <div className="rounded border border-yellow-200 bg-yellow-50 px-3 py-2 text-xs text-yellow-800">
-                  <span className="font-semibold">Note:</span> {question.note}
+                  <span className="font-semibold">Note:</span>
+                  <div className="mt-1 prose-tight">
+                    <ReactMarkdown 
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        p: ({node, ...props}) => <p className="mb-1 last:mb-0" {...props} />,
+                        ul: ({node, ...props}) => <ul className="list-disc ml-4 mb-1" {...props} />,
+                        ol: ({node, ...props}) => <ol className="list-decimal ml-4 mb-1" {...props} />,
+                        li: ({node, ...props}) => <li className="mb-0" {...props} />,
+                        a: ({node, ...props}) => <a className="text-blue-600 underline" target="_blank" rel="noopener noreferrer" {...props} />,
+                        code: ({node, ...props}) => <code className="bg-yellow-200/50 px-1 rounded" {...props} />,
+                      }}
+                    >
+                      {question.note}
+                    </ReactMarkdown>
+                  </div>
                 </div>
+
               )}
+
             </div>
           )}
         </div>
