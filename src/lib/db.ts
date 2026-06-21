@@ -5,9 +5,9 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 // Admin client dùng service_role key — chạy server-side ONLY
 // Bypasses RLS nhưng RLS vẫn được bật để bảo vệ nếu ai dùng anon key
-let _adminClient: ReturnType<typeof createClient> | null = null;
+let _adminClient: any = null;
 
-export function getAdminClient() {
+export function getAdminClient(): any {
   if (!_adminClient) {
     if (!supabaseUrl || !supabaseServiceKey) {
       throw new Error(
@@ -31,7 +31,7 @@ export async function query<T>(
   let i = 0;
   const pgSql = sql.replace(/\?/g, () => `$${++i}`);
 
-  const { data, error } = await client.rpc("execute_sql", {
+  const { data, error } = await (client as any).rpc("execute_sql", {
     sql_query: pgSql,
     sql_params: params,
   });

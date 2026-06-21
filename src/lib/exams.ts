@@ -91,7 +91,8 @@ async function insertQuestionWithOptions(
     .single();
 
   if (qError) throw new Error(qError.message);
-  const questionId = qData.id;
+  const questionId = qData?.id;
+  if (!questionId) throw new Error("Failed to get question ID after insert");
 
   const opts = question.options.map((opt) => ({
     question_id: questionId,
@@ -131,7 +132,8 @@ export async function createExamFromYoutube(
     .single();
 
   if (examError) throw new Error(examError.message);
-  const examId = examData.id;
+  const examId = examData?.id;
+  if (!examId) throw new Error("Failed to get exam ID after insert");
 
   for (const question of questions) {
     await insertQuestionWithOptions(examId, question);
