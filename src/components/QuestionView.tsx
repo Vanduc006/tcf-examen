@@ -190,6 +190,49 @@ export default function QuestionView({
     }
   };
 
+  const handleAIFixOptions = async () => {
+    let text = "";
+    if (!editForm.image_url) {
+      const input = window.prompt("Veuillez coller le texte OCR (Copy Fish) ở đây để AI xử lý lại các phương án:");
+      if (!input) return;
+      text = input;
+    }
+
+    setSaving(true);
+    try {
+      const res = await fetch("/api/ai/process-options", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          text: text || undefined,
+          image_url: editForm.image_url || undefined 
+        }),
+      });
+
+      if (!res.ok) throw new Error("AI Processing failed");
+      
+      const { options } = await res.json();
+      if (options && Array.isArray(options)) {
+        const newOptions = editForm.options.map((opt, i) => {
+          const aiOpt = options.find(o => o.choice_letter === opt.choice_letter.toUpperCase());
+          return aiOpt ? { ...opt, choice_text: aiOpt.choice_text } : opt;
+        });
+        
+        const updatedForm = { ...editForm, options: newOptions };
+        setEditForm(updatedForm);
+        
+        // Tự động lưu luôn cho tiện
+        await handleSaveImmediate(updatedForm);
+      }
+    } catch (err) {
+      console.error("AI Fix error:", err);
+      alert("Erreur lors du traitement AI.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+
 
   return (
     <div className="grid min-h-[520px] grid-cols-1 gap-0 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-lg lg:grid-cols-2">
@@ -266,8 +309,19 @@ export default function QuestionView({
               />
 
               <div className="mt-2 flex flex-col gap-2">
-                <span className="font-semibold text-gray-700">Options :</span>
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-gray-700">Options :</span>
+                  <button
+                    type="button"
+                    onClick={handleAIFixOptions}
+                    className="flex items-center gap-1 rounded bg-blue-50 px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-100"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"></path><path d="M5 3v4"></path><path d="M19 17v4"></path><path d="M3 5h4"></path><path d="M17 19h4"></path></svg>
+                    AI Fix (Auto Extract)
+                  </button>
+                </div>
                 {editForm.options.map((opt, i) => (
+
                   <div key={opt.id} className="flex items-center gap-2">
                     <input
                       type="radio"
