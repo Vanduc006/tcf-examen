@@ -4,7 +4,29 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 const model = genAI.getGenerativeModel({ model: process.env.GEMINI_MODEL || "gemini-2.0-flash" });
 
 export async function extractOptionsFromText(text: string) {
+  // 1. Try Fast Regex Parsing for clean OCR formats (like A content, B content...)
+  const lines = text.split(/\n+/).map(l => l.trim()).filter(l => l);
+  const regex = /^([A-D])[\s\.\)-]+(.+)$/i;
+  const parsedOptions: any[] = [];
+  
+  for (const line of lines) {
+    const match = line.match(regex);
+    if (match) {
+      parsedOptions.push({
+        choice_letter: match[1].toUpperCase(),
+        choice_text: match[2].trim()
+      });
+    }
+  }
+
+  // If we found exactly 4 options via regex, return immediately (fast & free)
+  if (parsedOptions.length === 4) {
+    return parsedOptions;
+  }
+
+  // 2. Fallback to AI if regex parsing fails or is incomplete
   const prompt = `
+
     You are an assistant helping to standardize data for French multiple-choice questions (TCF - Test de connaissance du français).
     Below is raw text extracted from an image (OCR) of a multiple-choice question.
     Please extract the 4 answer options (A, B, C, D) from this text.
