@@ -31,10 +31,16 @@ export async function fetchVideoTranscript(
       lang,
       videoDetails: true,
     })) as TranscriptResult;
-  } catch {
-    result = (await fetchTranscript(videoId, {
-      videoDetails: true,
-    })) as TranscriptResult;
+  } catch (err: any) {
+    console.error(`fetchTranscript failed for lang ${lang}:`, err.message);
+    try {
+      result = (await fetchTranscript(videoId, {
+        videoDetails: true,
+      })) as TranscriptResult;
+    } catch (err2: any) {
+      console.error(`fetchTranscript failed without lang:`, err2.message);
+      throw err2;
+    }
   }
 
   const segments = "segments" in result ? result.segments : result;

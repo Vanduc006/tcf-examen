@@ -68,6 +68,9 @@ export default function ExamList({ exams }: ExamListProps) {
           <p className="mt-2 text-sm text-gray-500">
             {exam.question_count} questions
           </p>
+          <p className="mt-2 text-sm text-gray-500">
+            {exam.video_url} URL
+          </p>
           <p className="mt-1 text-xs text-gray-400">
             {new Date(exam.created_at).toLocaleDateString("fr-FR")}
           </p>
