@@ -360,13 +360,13 @@ export default function QuestionView({
           ) : (
             <div className="flex flex-col gap-3">
               <div className="flex items-start justify-between gap-2">
-                <div className="flex-1">
+                {/* <div className="flex-1">
                   {question.question_text ? (
                     <p className="text-sm italic text-gray-600">{question.question_text}</p>
                   ) : (
                     <p className="text-sm italic text-gray-400">Aucun texte</p>
                   )}
-                </div>
+                </div> */}
                 <button type="button" onClick={handleEditClick} className="shrink-0 text-xs text-[#6b2d82] hover:underline">
                   Modifier
                 </button>
