@@ -377,7 +377,8 @@ export default function QuestionView({
                   <img src={question.image_url} alt="Illustration de la question" className="h-full w-full object-contain" />
                 </div>
               )}
-              {question.note && (
+              
+              {/* {question.note && (
                 <div className="rounded border border-yellow-200 bg-yellow-50 px-3 py-2 text-xs text-yellow-800">
                   <span className="font-semibold">Note:</span>
                   <div className="mt-1 prose-tight">
@@ -397,7 +398,7 @@ export default function QuestionView({
                   </div>
                 </div>
 
-              )}
+              )} */}
 
             </div>
           )}
